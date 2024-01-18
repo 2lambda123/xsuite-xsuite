@@ -81,11 +81,65 @@ that everything works by running a sample image from Nvidia:
 
     docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
-Configure the GitHub Actions runner to use the Nvidia Container Toolkit
+Setup the GitHub runner
 ---------------------------------
 
-We can follow the steps listed under *xsuite/xsuite > Settings >
-Actions > Runners > New self-hosted runner*.
+Navigate to *Settings > Actions > Runners* on GitHub and follow the
+instructions for creating the new runner. Once this is done, there are
+three final steps that need to be done before we enable the runner
+service.
+
+Configure SELinux
+~~~~~~~~~~~~~~~~~
+
+We need to label the service script as an executable to SELinux,
+otherwise it will prevent us from launching the service.
+
+```bash
+sudo semanage fcontext -a -t bin_t '/home/xsuite/actions-runner/runsvc.sh'
+sudo semanage fcontext -a -t bin_t '/home/xsuite/actions-runner/bin(/.*)?'
+sudo restorecon -v -R /home/xsuite/actions-runner/
+```
+
+Set the right container format
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since we are using a docker Dockerfile format, which is slightly
+different to the OCI format, to which podman defaults, we need to change
+the setting for podman to use the Docker format. To achieve this, we add
+an environment variable to the runner service file:
+
+```bash
+sudo ./svc.sh install xsuite && sudo ./svc.sh stop  # create but don't start the service
+sudo systemctl edit actions.runner.xsuite-xsuite.xsuite-alma-tests.service
+```
+In the opened editor (which may be empty), we paste the following:
+
+```ini
+[Service]
+Environment="BUILDAH_FORMAT=docker"
+```
+
+Enable account lingering
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order for Podman to be able to function headless, we need to enable
+account lingering, as otherwise, systemd will kill any user process when
+there is no login session for the user.
+
+```bash
+sudo loginctl enable-linger xsuite
+```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Finally, we can start the runner service, which will immediately begin
+listening for new jobs:
+
+```bash
+sudo ./svc.sh install xsuite
+sudo ./svc.sh start
+```
 
 This involves downloading and configuring the runner with the
 repository.
@@ -98,11 +152,8 @@ Afterwards, we install and run the runner as a service with user `ubuntu`:
     ./svc.sh start
 
 
-Setup of the test runner machine (Alma 8)
-=========================================
-
-Synopsis
---------
+Setup the test runner machine with Alma 8
+------------------------------------
 
 On the AlmaLinux 8 virtual machine (the “host”) will be running a GitHub
 runner executing Xsuite tests in a containerised environment. In order
