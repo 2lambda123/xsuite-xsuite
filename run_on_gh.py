@@ -87,11 +87,12 @@ def run(xo, xd, xp, xt, xf, xm, xc, platform, ctx, suites, wf, branch):
 
     python run_on_gh.py --suites xf,xd --platform pcbe-abp-gpu001-1 --xo xsuite:release/0.2.10 --xf xd:release/v0.5.0 --xt xsuite:release/0.46.2 --xf xsuite:release/0.14.1 --ctx cuda:3
     """
-    try:
-        subprocess.run(('gh', '--version'))
-    except FileNotFoundError:
-        print(__doc__)
-        return 1
+    res = subprocess.run(('gh', '--version'), capture_output=True)
+
+    if res.returncode != 0:
+        print('Error logs:')
+        print(res.stdout.decode())
+        print('Please provide the above error logs when reporting an issue.')
 
     ctx = ctx.replace('cl', 'ContextPyopencl')
     ctx = ctx.replace('cuda', 'ContextCupy')
