@@ -58,8 +58,7 @@ To be able to run containers with GPU support we need the Nvidia
 container toolkit. A prerequisite for that are the Nvidia drivers.
 The up-to-date install instructions for the toolking can be found
 `here <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>`_.
-There is also a useful page available on the topic on the
-`CERN OpenStack guide <https://clouddocs.web.cern.ch/gpu/index.html>`_.
+
 
 .. code-block:: bash
 
@@ -82,11 +81,65 @@ that everything works by running a sample image from Nvidia:
 
     docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
-Install the GitHub Actions runner
+Setup the GitHub runner
 ---------------------------------
 
-We can follow the steps listed under *xsuite/xsuite > Settings >
-Actions > Runners > New self-hosted runner*.
+Navigate to *Settings > Actions > Runners* on GitHub and follow the
+instructions for creating the new runner. Once this is done, there are
+three final steps that need to be done before we enable the runner
+service.
+
+Configure SELinux
+~~~~~~~~~~~~~~~~~
+
+We need to label the service script as an executable to SELinux,
+otherwise it will prevent us from launching the service.
+
+```bash
+sudo semanage fcontext -a -t bin_t '/home/xsuite/actions-runner/runsvc.sh'
+sudo semanage fcontext -a -t bin_t '/home/xsuite/actions-runner/bin(/.*)?'
+sudo restorecon -v -R /home/xsuite/actions-runner/
+```
+
+Set the right container format
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since we are using a docker Dockerfile format, which is slightly
+different to the OCI format, to which podman defaults, we need to change
+the setting for podman to use the Docker format. To achieve this, we add
+an environment variable to the runner service file:
+
+```bash
+sudo ./svc.sh install xsuite && sudo ./svc.sh stop  # create but don't start the service
+sudo systemctl edit actions.runner.xsuite-xsuite.xsuite-alma-tests.service
+```
+In the opened editor (which may be empty), we paste the following:
+
+```ini
+[Service]
+Environment="BUILDAH_FORMAT=docker"
+```
+
+Enable account lingering
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order for Podman to be able to function headless, we need to enable
+account lingering, as otherwise, systemd will kill any user process when
+there is no login session for the user.
+
+```bash
+sudo loginctl enable-linger xsuite
+```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Finally, we can start the runner service, which will immediately begin
+listening for new jobs:
+
+```bash
+sudo ./svc.sh install xsuite
+sudo ./svc.sh start
+```
 
 This involves downloading and configuring the runner with the
 repository.
@@ -99,11 +152,8 @@ Afterwards, we install and run the runner as a service with user `ubuntu`:
     ./svc.sh start
 
 
-Setup of the test runner machine (Alma 8)
-=========================================
-
-Synopsis
---------
+Setup the test runner machine with Alma 8
+------------------------------------
 
 On the AlmaLinux 8 virtual machine (the “host”) will be running a GitHub
 runner executing Xsuite tests in a containerised environment. In order
@@ -115,7 +165,45 @@ use Podman instead of Docker. Podman is a container environment similar
 to Docker, however it does not require a separate daemon to run
 containers, which makes it more lighweight.
 
-Setup a user account
+Setup the test runner machine with Alma 8
+------------------------------------
+
+On the AlmaLinux 8 virtual machine (the 
+
+provided by the Docker people, as described `here <https://docs.docker.com/engine/install/ubuntu>`_.
+
+.. code-block:: bash
+
+    # Install docker
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    # Set up rootless for good practice
+    dockerd-rootless-setuptool.sh install
+
+To be able to run containers with GPU support we need the Nvidia
+container toolkit. A prerequisite for that are the Nvidia drivers.
+The up-to-date install instructions for the toolking can be found
+`here <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>`_.
+
+.. code-block:: bash
+
+    # Install cuda drivers
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+    sudo dpkg -i cuda-keyring_1.0-1_all.deb
+    sudo apt-get update
+    sudo apt-get -y install cuda
+
+    # Install the container toolkit
+    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+After restarting the Docker daemon with `sudo systemctl restart docker`, we can check
+that everything works by running a sample image from Nvidia:
+
+.. code-block::
+
+    docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-s
 --------------------
 
 We can set up an appropriate GPU-capable OpenStack VM in the same way as
@@ -299,7 +387,7 @@ there is no login session for the user.
 
    sudo loginctl enable-linger xsuite
 
-Enable and start the service
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Finally, we can start the runner service, which will immediately begin
