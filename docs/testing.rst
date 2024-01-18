@@ -114,7 +114,45 @@ use Podman instead of Docker. Podman is a container environment similar
 to Docker, however it does not require a separate daemon to run
 containers, which makes it more lighweight.
 
-Setup a user account
+Setup the test runner machine with Alma 8
+------------------------------------
+
+On the AlmaLinux 8 virtual machine (the 
+
+provided by the Docker people, as described `here <https://docs.docker.com/engine/install/ubuntu>`_.
+
+.. code-block:: bash
+
+    # Install docker
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    # Set up rootless for good practice
+    dockerd-rootless-setuptool.sh install
+
+To be able to run containers with GPU support we need the Nvidia
+container toolkit. A prerequisite for that are the Nvidia drivers.
+The up-to-date install instructions for the toolking can be found
+`here <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>`_.
+
+.. code-block:: bash
+
+    # Install cuda drivers
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+    sudo dpkg -i cuda-keyring_1.0-1_all.deb
+    sudo apt-get update
+    sudo apt-get -y install cuda
+
+    # Install the container toolkit
+    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+After restarting the Docker daemon with `sudo systemctl restart docker`, we can check
+that everything works by running a sample image from Nvidia:
+
+.. code-block::
+
+    docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-s
 --------------------
 
 We can set up an appropriate GPU-capable OpenStack VM in the same way as
