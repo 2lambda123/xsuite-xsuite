@@ -81,7 +81,7 @@ that everything works by running a sample image from Nvidia:
 
     docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
-Install the GitHub Actions runner
+Configure the GitHub Actions runner to use the Nvidia Container Toolkit
 ---------------------------------
 
 We can follow the steps listed under *xsuite/xsuite > Settings >
@@ -298,7 +298,7 @@ there is no login session for the user.
 
    sudo loginctl enable-linger xsuite
 
-Enable and start the service
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Finally, we can start the runner service, which will immediately begin
