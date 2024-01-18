@@ -58,8 +58,7 @@ To be able to run containers with GPU support we need the Nvidia
 container toolkit. A prerequisite for that are the Nvidia drivers.
 The up-to-date install instructions for the toolking can be found
 `here <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>`_.
-There is also a useful page available on the topic on the
-`CERN OpenStack guide <https://clouddocs.web.cern.ch/gpu/index.html>`_.
+
 
 .. code-block:: bash
 
